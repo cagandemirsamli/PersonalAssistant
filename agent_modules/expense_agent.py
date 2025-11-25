@@ -1,13 +1,12 @@
 import json
 import os
-import time
 import asyncio
-from openai import OpenAI
+from dotenv import load_dotenv
 from agents import Agent, Runner, function_tool, SQLiteSession
 
-# Set the OpenAI API Key
-api_key = input("Please enter the OpenAI API key: ")
-os.environ["OPENAI_API_KEY"] = api_key
+# Load environment variables from .env file
+load_dotenv()
+# The agents library uses OPENAI_API_KEY from the environment automatically
 
 class ExpenseAgent():
 
@@ -63,6 +62,39 @@ class ExpenseAgent():
                 return f"Error creating expense: {str(e)}"
 
         @function_tool
+        def delete_expense(category: str, date: str):
+            """
+            Delete an expense by matching its category and date.
+            Args:
+                category: The category of the expense to delete
+                date: The date of the expense to delete
+            Returns:
+                Confirmation message or error if expense not found.
+            """
+            try:
+                expenses = self.load_expenses("data/expense_file.json")
+                if not expenses:
+                    return "No expenses found to delete."
+                
+                # Find and remove matching expense(s)
+                keys_to_delete = [
+                    key for key, exp in expenses.items()
+                    if exp.get("category", "").lower() == category.lower()
+                    and exp.get("date", "").lower() == date.lower()
+                ]
+                
+                if not keys_to_delete:
+                    return f"No expense found for category '{category}' on date '{date}'."
+                
+                for key in keys_to_delete:
+                    del expenses[key]
+                
+                self.close_expenses(expenses, save_dir="data/expense_file.json")
+                return f"Deleted {len(keys_to_delete)} expense(s) for '{category}' on {date}."
+            except Exception as e:
+                return f"Error deleting expense: {str(e)}"
+
+        @function_tool
         def get_budgets():
             """
             Retrieve all budgets from the budget file.
@@ -82,7 +114,16 @@ class ExpenseAgent():
             return budgets
 
         @function_tool
-        def set_budget(category: str, amount: float, spent: float):
+        def set_budget(category: str, amount: float, spent: float = 0.0):
+            """
+            Create or update a budget for a specific category.
+            Args:
+                category: The category name for the budget (e.g., 'coffee', 'food', 'transport')
+                amount: The total budget limit for this category
+                spent: The amount already spent in this category (default 0.0 for new budgets)
+            Returns:
+                Confirmation message that the budget was created/updated.
+            """
             try:
                 print(f"Tool called with: category={category}, amount={amount}")
                 budget = {
@@ -92,42 +133,83 @@ class ExpenseAgent():
                 }
                 self.save_budget(budget=budget, save_dir="data/budget_file.json")
                 print("Created successfully")
-                return f"Expense dictionary correctly created"
+                return f"Budget for '{category}' created with limit {amount} TL"
             except Exception as e:
-                print(f"Error in create_expense_tool: {e}")
+                print(f"Error in set_budget: {e}")
                 import traceback
                 traceback.print_exc()
                 return f"Error creating budget: {str(e)}"
 
         @function_tool
-        def update_spendings(category: str, amount: float, budget_save_dir: str ="data/budget_file.json"):
-            budgets = self.load_budgets(budget_save_dir)
-            prev_spent = budgets[category]["spent"]
-            budgets[category]["spent"] += amount
-            self.close_budgets(budgets, save_dir="data/budget_file.json")
-            return f"Previous spent: {prev_spent}, Updated spent: {budgets[category]['spent']}"
+        def update_spendings(category: str, amount: float):
+            """
+            Add spending amount to an existing budget category.
+            Args:
+                category: The budget category to update
+                amount: The amount spent to add to the category's total spending
+            Returns:
+                Message showing the previous and updated spending amounts.
+            """
+            try:
+                budgets = self.load_budgets("data/budget_file.json")
+                if category not in budgets:
+                    return f"No budget found for category '{category}'. Create one first with set_budget."
+                prev_spent = budgets[category]["spent"]
+                budgets[category]["spent"] += amount
+                self.close_budgets(budgets, save_dir="data/budget_file.json")
+                limit = budgets[category]["amount"]
+                new_spent = budgets[category]["spent"]
+                remaining = limit - new_spent
+                return f"Updated '{category}' spending: {prev_spent} → {new_spent} TL (limit: {limit} TL, remaining: {remaining} TL)"
+            except Exception as e:
+                return f"Error updating spendings: {str(e)}"
 
         @function_tool
-        def edit_budget(category: str, amount: float, budget_save_dir: str = "data/budget_file.json"):
-            budgets = self.load_budgets(budget_save_dir)
-            prev_budget = budgets[category]
-            budgets[category]["amount"] = amount
-            self.close_budgets(budgets, save_dir="data/budget_file.json")
-            return f"Previous budget: {prev_budget}, Updated budget: {budgets[category]}"
+        def edit_budget(category: str, amount: float):
+            """
+            Change the budget limit for an existing category.
+            Args:
+                category: The budget category to edit
+                amount: The new budget limit amount
+            Returns:
+                Message showing the previous and updated budget limits.
+            """
+            try:
+                budgets = self.load_budgets("data/budget_file.json")
+                if category not in budgets:
+                    return f"No budget found for category '{category}'. Create one first with set_budget."
+                prev_amount = budgets[category]["amount"]
+                budgets[category]["amount"] = amount
+                self.close_budgets(budgets, save_dir="data/budget_file.json")
+                return f"Updated '{category}' budget limit: {prev_amount} → {amount} TL"
+            except Exception as e:
+                return f"Error editing budget: {str(e)}"
 
         @function_tool
-        def remove_budget(category: str, budget_save_dir: str ="data/budget_file.json"):
-            budgets = self.load_budgets(budget_save_dir)
-            budgets.pop(category)
-            self.close_budgets(budgets, save_dir="data/budget_file.json")
-            return f"Budget successfully removed."
+        def remove_budget(category: str):
+            """
+            Delete a budget category entirely.
+            Args:
+                category: The budget category to remove
+            Returns:
+                Confirmation that the budget was removed.
+            """
+            try:
+                budgets = self.load_budgets("data/budget_file.json")
+                if category not in budgets:
+                    return f"No budget found for category '{category}'."
+                budgets.pop(category)
+                self.close_budgets(budgets, save_dir="data/budget_file.json")
+                return f"Budget for '{category}' successfully removed."
+            except Exception as e:
+                return f"Error removing budget: {str(e)}"
 
 
         self.agent = Agent(
             name=name,
             instructions=instructions,
-            tools=[get_expenses, create_expense,
-                   set_budget, update_spendings,
+            tools=[get_expenses, create_expense, delete_expense,
+                   get_budgets, set_budget, update_spendings,
                    edit_budget, remove_budget],
             model=model
         )
@@ -168,6 +250,10 @@ class ExpenseAgent():
                 expenses = {}
         else:
             expenses = {}
+
+        # Generate a unique key and add the new expense
+        unique_key = f"{expense.get('date', 'unknown')}_{expense.get('category', 'unknown')}_{len(expenses)}"
+        expenses[unique_key] = expense
 
         with open(full_path, "w") as f:
             json.dump(expenses, f, indent=4)
@@ -252,31 +338,45 @@ class ExpenseAgent():
 
 
 instructions = """
-Personality: You are an AI agent that keeps track of user expenses.
+Personality: You are an AI agent that keeps track of user expenses and budgets.
 
-Purpose: To remind, alert, or complete other related tasks regarding user demand.
+Purpose: To record expenses, manage budgets per category, alert users about spending limits, 
+and complete other related tasks regarding user demand.
 
-IMPORTANT: If the amount isn't entered, estimate it by comparing the average price in Turkey.
-The currency is Turkish Lira (TL), nothing else.
+CAPABILITIES:
+- Record and retrieve expenses (category, date, amount)
+- Create, update, and remove budgets per category
+- Track spending against budget limits
+- Alert when spending approaches or exceeds budget limits
 
-Tip: Sometimes the amount might not be passed, in such cases it is your job to 
-estimate the cost regarding the expense on average.
+IMPORTANT RULES:
+1. If the amount isn't entered, estimate it by comparing the average price in Turkey.
+2. The currency is Turkish Lira (TL), nothing else.
+3. When adding an expense to a category that has a budget, also update the budget spending.
+4. Always inform the user of their remaining budget after recording an expense.
 """
 
-expense_agent = ExpenseAgent(name="ExpenseAgent",
-                             instructions=instructions,
-                             model="gpt-4.1-mini")
-
-
-session = SQLiteSession("ExpenseAgent Communication")
-async def run_the_agent(agent):
-    result = await Runner.run(
-        starting_agent=agent,
-        input=#"I want to create a new budget for coffee. I spent 150 tl on iced coffee on 19th November (add that to expenses as well). I haven't created a budget for the coffee category yet so create one with 2000 liras. Do the necessary things with these info."
-        "can you record an expense of 200 tl on food for 20th november 2025",
-        session=session
+def create_expense_agent():
+    """Factory function to create an ExpenseAgent instance."""
+    return ExpenseAgent(
+        name="ExpenseAgent",
+        instructions=instructions,
+        model="gpt-4.1-mini"
     )
-    print(result.final_output)
-    return result
 
-asyncio.run(run_the_agent(expense_agent.agent))
+
+# Only run when executed directly, not when imported
+if __name__ == "__main__":
+    expense_agent = create_expense_agent()
+    session = SQLiteSession("ExpenseAgent Communication")
+
+    async def run_the_agent(agent):
+        result = await Runner.run(
+            starting_agent=agent,
+            input="I spent 170 tl on iced coffee on 24th November (add to expense list as well). If I haven't created a budget for coffee yet, create one with 2000 liras. If there is an existing coffee budget, let me know of the limit and how much I spent up to this point.",
+            session=session
+        )
+        print(result.final_output)
+        return result
+
+    asyncio.run(run_the_agent(expense_agent.agent))

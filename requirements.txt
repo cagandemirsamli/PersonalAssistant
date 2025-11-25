@@ -1,4 +1,6 @@
 openai
+openai-agents
+python-dotenv
 streamlit
 google-auth
 google-auth-oauthlib
