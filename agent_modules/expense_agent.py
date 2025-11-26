@@ -223,37 +223,15 @@ class ExpenseAgent():
         Returns:
             Confirmation message that the expense is successfully added to the file.
         """
-        # Get the directory where this script is located
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        # Go up one level to project root, then join with save_dir
-        project_root = os.path.dirname(script_dir)
-        full_path = os.path.join(project_root, save_dir)
-
-        # Ensure the directory exists
-        os.makedirs(os.path.dirname(full_path), exist_ok=True)
-
-        # Check if file exists and has content
-        if os.path.exists(full_path) and os.path.getsize(full_path) > 0:
-            try:
-                with open(full_path, 'r') as f:
-                    loaded_data = json.load(f)
-                    # Convert list to dict if necessary (backward compatibility)
-                    if isinstance(loaded_data, list):
-                        expenses = {}
-                        for idx, item in enumerate(loaded_data):
-                            unique_key = f"{item.get('date', 'unknown')}_{item.get('category', 'unknown')}_{idx}"
-                            expenses[unique_key] = item
-                    else:
-                        expenses = loaded_data
-            except json.JSONDecodeError:
-                # File exists but has invalid JSON, start fresh
-                expenses = {}
-        else:
-            expenses = {}
+        expenses = self.load_expenses(save_dir)
 
         # Generate a unique key and add the new expense
         unique_key = f"{expense.get('date', 'unknown')}_{expense.get('category', 'unknown')}_{len(expenses)}"
         expenses[unique_key] = expense
+
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        project_root = os.path.dirname(script_dir)
+        full_path = os.path.join(project_root, save_dir)
 
         with open(full_path, "w") as f:
             json.dump(expenses, f, indent=4)
@@ -310,6 +288,7 @@ class ExpenseAgent():
 
         with open(full_path, 'w') as f:
             json.dump(expenses, f, indent=4)
+
     def load_budgets(self, save_dir):
         script_dir = os.path.dirname(os.path.abspath(__file__))
         project_root = os.path.dirname(script_dir)
@@ -343,13 +322,13 @@ Personality: You are an AI agent that keeps track of user expenses and budgets.
 Purpose: To record expenses, manage budgets per category, alert users about spending limits, 
 and complete other related tasks regarding user demand.
 
-CAPABILITIES:
+Capabilities:
 - Record and retrieve expenses (category, date, amount)
 - Create, update, and remove budgets per category
 - Track spending against budget limits
 - Alert when spending approaches or exceeds budget limits
 
-IMPORTANT RULES:
+Important Rules:
 1. If the amount isn't entered, estimate it by comparing the average price in Turkey.
 2. The currency is Turkish Lira (TL), nothing else.
 3. When adding an expense to a category that has a budget, also update the budget spending.
