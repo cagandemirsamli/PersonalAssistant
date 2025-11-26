@@ -1,7 +1,11 @@
+# or opeani agent
 openai
 openai-agents
+# for api extraction
 python-dotenv
+# frontend
 streamlit
+# for the calendar agent
 google-auth
 google-auth-oauthlib
 google-auth-httplib2
