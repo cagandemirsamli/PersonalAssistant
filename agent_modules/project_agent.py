@@ -28,7 +28,27 @@ class ProjectAgent():
             Returns:
                 Confirmation message that the project was created.
             """
-            pass
+
+            name_key = name.upper().replace(" ", "_")
+
+            projects = self.load_projects("data/projects.json")
+            if name_key in projects:
+                return f"Project '{name}' already exists."
+            projects[name_key] = {
+                "description": description,
+                "status": "planning",
+                "created_date": datetime.now().strftime("%Y-%m-%d"),
+                "features": [],
+                "milestones": [],
+                "notes": [],
+                "challenges": [],
+                "technologies": [],
+                "links": {},
+                "next_steps": [],
+            }
+            self.close_projects(projects, "data/projects.json")
+            return f"Project '{name_key}' added successfully!"
+
 
         @function_tool
         def get_projects(status_filter: str = "all"):
@@ -39,7 +59,23 @@ class ProjectAgent():
             Returns:
                 A dict of projects matching the filter.
             """
-            pass
+
+            projects = self.load_projects("data/projects.json")
+            if not projects:
+                return "No projects found."
+            
+            if status_filter == "all":
+                return projects
+            
+            # Filter by status
+            filtered = {
+                name: data for name, data in projects.items()
+                if data.get("status") == status_filter
+            }
+            
+            if not filtered:
+                return f"No projects with status '{status_filter}' found."
+            return filtered
 
         @function_tool
         def get_project_details(name: str):
@@ -51,7 +87,11 @@ class ProjectAgent():
             Returns:
                 Complete project information.
             """
-            pass
+            name_key = name.upper().replace(" ", "_")
+            projects = self.load_projects("data/projects.json")
+            if name_key not in projects:
+                return f"Project '{name}' not found."
+            return projects[name_key]
 
         @function_tool
         def update_project_status(name: str, status: str):
@@ -63,7 +103,13 @@ class ProjectAgent():
             Returns:
                 Confirmation of the status change.
             """
-            pass
+            name_key = name.upper().replace(" ", "_")
+            projects = self.load_projects("data/projects.json")
+            if name_key not in projects:
+                return f"Project '{name}' not found."
+            projects[name_key]["status"] = status
+            self.close_projects(projects, "data/projects.json")
+            return f"Status of '{name_key}' successfully changed to '{status}'."
 
         @function_tool
         def update_project_description(name: str, description: str):
@@ -75,7 +121,13 @@ class ProjectAgent():
             Returns:
                 Confirmation that the description was updated.
             """
-            pass
+            name_key = name.upper().replace(" ", "_")
+            projects = self.load_projects("data/projects.json")
+            if name_key not in projects:
+                return f"Project '{name}' not found."
+            projects[name_key]["description"] = description
+            self.close_projects(projects, "data/projects.json")
+            return f"Description of '{name_key}' successfully changed to '{description}'."
 
         @function_tool
         def remove_project(name: str):
@@ -86,69 +138,13 @@ class ProjectAgent():
             Returns:
                 Confirmation that the project was deleted.
             """
-            pass
-
-
-        @function_tool
-        def add_milestone(name: str, milestone: str):
-            """
-            Add a new milestone to a project (status: pending).
-            Args:
-                name: The name of the project
-                milestone: The milestone name (e.g., "Backend API")
-            Returns:
-                Confirmation that the milestone was added.
-            """
-            pass
-
-        @function_tool
-        def complete_milestone(name: str, milestone: str):
-            """
-            Mark a milestone as completed with today's date.
-            Args:
-                name: The name of the project
-                milestone: The milestone to mark as completed
-            Returns:
-                Confirmation that the milestone was marked complete.
-            """
-            pass
-
-        @function_tool
-        def remove_milestone(name: str, milestone: str):
-            """
-            Remove a milestone from the project.
-            Args:
-                name: The name of the project
-                milestone: The milestone to remove
-            Returns:
-                Confirmation that the milestone was removed.
-            """
-            pass
-
-
-        @function_tool
-        def add_technology(name: str, tech: str):
-            """
-            Add a technology to the project's tech stack.
-            Args:
-                name: The name of the project
-                tech: The technology to add (e.g., "Python", "Docker")
-            Returns:
-                Confirmation that the technology was added.
-            """
-            pass
-
-        @function_tool
-        def remove_technology(name: str, tech: str):
-            """
-            Remove a technology from the project's tech stack.
-            Args:
-                name: The name of the project
-                tech: The technology to remove
-            Returns:
-                Confirmation that the technology was removed.
-            """
-            pass
+            name_key = name.upper().replace(" ", "_")
+            projects = self.load_projects("data/projects.json")
+            if name_key not in projects:
+                return f"Project '{name}' not found."
+            projects.pop(name_key)
+            self.close_projects(projects, "data/projects.json")
+            return f"'{name_key}' successfully removed from projects."
 
 
         @function_tool
@@ -161,7 +157,13 @@ class ProjectAgent():
             Returns:
                 Confirmation that the feature was added.
             """
-            pass
+            name_key = name.upper().replace(" ", "_")
+            projects = self.load_projects("data/projects.json")
+            if name_key not in projects:
+                return f"Project '{name}' not found."
+            projects[name_key]["features"].append(feature)
+            self.close_projects(projects, "data/projects.json")
+            return f"Feature '{feature}' added to '{name_key}'."
 
         @function_tool
         def remove_feature(name: str, feature: str):
@@ -173,7 +175,17 @@ class ProjectAgent():
             Returns:
                 Confirmation that the feature was removed.
             """
-            pass
+            name_key = name.upper().replace(" ", "_")
+            projects = self.load_projects("data/projects.json")
+            if name_key not in projects:
+                return f"Project '{name}' not found."
+            
+            if feature not in projects[name_key]["features"]:
+                return f"Feature '{feature}' not found in project '{name}'."
+            
+            projects[name_key]["features"].remove(feature)
+            self.close_projects(projects, "data/projects.json")
+            return f"Feature '{feature}' removed from '{name_key}'."
 
         @function_tool
         def update_feature(name: str, old_feature: str, new_feature: str):
@@ -186,20 +198,123 @@ class ProjectAgent():
             Returns:
                 Confirmation that the feature was updated.
             """
-            pass
+            name_key = name.upper().replace(" ", "_")
+            projects = self.load_projects("data/projects.json")
+            if name_key not in projects:
+                return f"Project '{name}' not found."
+            
+            if old_feature not in projects[name_key]["features"]:
+                return f"Feature '{old_feature}' not found in project '{name}'."
+            
+            idx = projects[name_key]["features"].index(old_feature)
+            projects[name_key]["features"][idx] = new_feature
+            self.close_projects(projects, "data/projects.json")
+            return f"Feature updated: '{old_feature}' → '{new_feature}'."
+
+
 
 
         @function_tool
-        def add_note(name: str, content: str):
+        def add_milestone(name: str, milestone_name: str, status: str = "pending", completed_date: str = None):
             """
-            Add a progress note to the project (automatically dated with today).
+            Add a new milestone to a project.
+            Args:
+                name: The name of the project
+                milestone_name: The milestone name (e.g., "Backend API")
+                status: The status - "pending" or "completed" (defaults to "pending")
+                completed_date: The completion date if completed (format: YYYY-MM-DD), or null if pending
+            Returns:
+                Confirmation that the milestone was added.
+            """
+            name_key = name.upper().replace(" ", "_")
+            projects = self.load_projects("data/projects.json")
+            if name_key not in projects:
+                return f"Project '{name}' not found."
+            projects[name_key]["milestones"].append({
+                "name": milestone_name,
+                "status": status,
+                "completed_date": completed_date
+            })
+            self.close_projects(projects, "data/projects.json")
+            return f"Milestone '{milestone_name}' added to '{name_key}'."
+
+        @function_tool
+        def complete_milestone(name: str, milestone_name: str, completed_date: str = None):
+            """
+            Mark a milestone as completed.
+            Args:
+                name: The name of the project
+                milestone_name: The milestone to mark as completed
+                completed_date: Optional completion date (format: YYYY-MM-DD). Defaults to today.
+            Returns:
+                Confirmation that the milestone was marked complete.
+            """
+            name_key = name.upper().replace(" ", "_")
+            projects = self.load_projects("data/projects.json")
+            if name_key not in projects:
+                return f"Project '{name}' not found."
+            
+            for m in projects[name_key]["milestones"]:
+                if m["name"].lower() == milestone_name.lower():
+                    m["status"] = "completed"
+                    m["completed_date"] = completed_date or datetime.now().strftime("%Y-%m-%d")
+                    self.close_projects(projects, "data/projects.json")
+                    return f"Milestone '{milestone_name}' marked as completed."
+            
+            return f"Milestone '{milestone_name}' not found in project '{name}'."
+
+
+        @function_tool
+        def remove_milestone(name: str, milestone_name: str):
+            """
+            Remove a milestone from the project.
+            Args:
+                name: The name of the project
+                milestone_name: The name of the milestone to remove
+            Returns:
+                Confirmation that the milestone was removed.
+            """
+            name_key = name.upper().replace(" ", "_")
+            projects = self.load_projects("data/projects.json")
+            if name_key not in projects:
+                return f"Project '{name}' not found."
+            
+            original_count = len(projects[name_key]["milestones"])
+            projects[name_key]["milestones"] = [
+                m for m in projects[name_key]["milestones"]
+                if m["name"].lower() != milestone_name.lower()
+            ]
+            
+            if len(projects[name_key]["milestones"]) == original_count:
+                return f"Milestone '{milestone_name}' not found in project '{name}'."
+            
+            self.close_projects(projects, "data/projects.json")
+            return f"Milestone '{milestone_name}' removed from '{name_key}'."
+
+
+
+
+        @function_tool
+        def add_note(name: str, content: str, date: str = None):
+            """
+            Add a progress note to the project.
             Args:
                 name: The name of the project
                 content: The note content (e.g., "Fixed async issue")
+                date: Optional date (format: YYYY-MM-DD). Defaults to today.
             Returns:
                 Confirmation that the note was added.
             """
-            pass
+            name_key = name.upper().replace(" ", "_")
+            projects = self.load_projects("data/projects.json")
+            if name_key not in projects:
+                return f"Project '{name}' not found."
+            projects[name_key]["notes"].append({
+                "date": date or datetime.now().strftime("%Y-%m-%d"),
+                "content": content
+            })
+            self.close_projects(projects, "data/projects.json")
+            return f"Note added to '{name_key}'."
 
         @function_tool
         def remove_note(name: str, content: str):
@@ -211,7 +326,22 @@ class ProjectAgent():
             Returns:
                 Confirmation that the note was removed.
             """
-            pass
+            name_key = name.upper().replace(" ", "_")
+            projects = self.load_projects("data/projects.json")
+            if name_key not in projects:
+                return f"Project '{name}' not found."
+            
+            original_count = len(projects[name_key]["notes"])
+            projects[name_key]["notes"] = [
+                n for n in projects[name_key]["notes"]
+                if n["content"].lower() != content.lower()
+            ]
+            
+            if len(projects[name_key]["notes"]) == original_count:
+                return f"Note not found in project '{name}'."
+            
+            self.close_projects(projects, "data/projects.json")
+            return f"Note removed from '{name_key}'."
 
         @function_tool
         def update_note(name: str, old_content: str, new_content: str):
@@ -224,7 +354,20 @@ class ProjectAgent():
             Returns:
                 Confirmation that the note was updated.
             """
-            pass
+            name_key = name.upper().replace(" ", "_")
+            projects = self.load_projects("data/projects.json")
+            if name_key not in projects:
+                return f"Project '{name}' not found."
+            
+            for n in projects[name_key]["notes"]:
+                if n["content"].lower() == old_content.lower():
+                    n["content"] = new_content
+                    self.close_projects(projects, "data/projects.json")
+                    return f"Note updated in '{name_key}'."
+            
+            return f"Note not found in project '{name}'."
+
+
 
 
         @function_tool
@@ -237,7 +380,13 @@ class ProjectAgent():
             Returns:
                 Confirmation that the challenge was documented.
             """
-            pass
+            name_key = name.upper().replace(" ", "_")
+            projects = self.load_projects("data/projects.json")
+            if name_key not in projects:
+                return f"Project '{name}' not found."
+            projects[name_key]["challenges"].append(challenge)
+            self.close_projects(projects, "data/projects.json")
+            return f"Challenge added to '{name_key}'."
 
         @function_tool
         def remove_challenge(name: str, challenge: str):
@@ -249,7 +398,17 @@ class ProjectAgent():
             Returns:
                 Confirmation that the challenge was removed.
             """
-            pass
+            name_key = name.upper().replace(" ", "_")
+            projects = self.load_projects("data/projects.json")
+            if name_key not in projects:
+                return f"Project '{name}' not found."
+            
+            if challenge not in projects[name_key]["challenges"]:
+                return f"Challenge not found in project '{name}'."
+            
+            projects[name_key]["challenges"].remove(challenge)
+            self.close_projects(projects, "data/projects.json")
+            return f"Challenge removed from '{name_key}'."
 
         @function_tool
         def update_challenge(name: str, old_challenge: str, new_challenge: str):
@@ -262,44 +421,61 @@ class ProjectAgent():
             Returns:
                 Confirmation that the challenge was updated.
             """
-            pass
+            name_key = name.upper().replace(" ", "_")
+            projects = self.load_projects("data/projects.json")
+            if name_key not in projects:
+                return f"Project '{name}' not found."
+            
+            if old_challenge not in projects[name_key]["challenges"]:
+                return f"Challenge not found in project '{name}'."
+            
+            idx = projects[name_key]["challenges"].index(old_challenge)
+            projects[name_key]["challenges"][idx] = new_challenge
+            self.close_projects(projects, "data/projects.json")
+            return f"Challenge updated in '{name_key}'."
+
+
 
         @function_tool
-        def add_next_step(name: str, step: str):
+        def add_technology(name: str, tech: str):
             """
-            Add a planned next step for the project.
+            Add a technology to the project's tech stack.
             Args:
                 name: The name of the project
-                step: The next step (e.g., "Implement background scheduler")
+                tech: The technology to add (e.g., "Python", "Docker")
             Returns:
-                Confirmation that the next step was added.
+                Confirmation that the technology was added.
             """
-            pass
+            name_key = name.upper().replace(" ", "_")
+            projects = self.load_projects("data/projects.json")
+            if name_key not in projects:
+                return f"Project '{name}' not found."
+            projects[name_key]["technologies"].append(tech)
+            self.close_projects(projects, "data/projects.json")
+            return f"Technology '{tech}' added to '{name_key}'."
 
         @function_tool
-        def remove_next_step(name: str, step: str):
+        def remove_technology(name: str, tech: str):
             """
-            Remove a next step from the project.
+            Remove a technology from the project's tech stack.
             Args:
                 name: The name of the project
-                step: The step to remove
+                tech: The technology to remove
             Returns:
-                Confirmation that the next step was removed.
+                Confirmation that the technology was removed.
             """
-            pass
+            name_key = name.upper().replace(" ", "_")
+            projects = self.load_projects("data/projects.json")
+            if name_key not in projects:
+                return f"Project '{name}' not found."
+            
+            if tech not in projects[name_key]["technologies"]:
+                return f"Technology '{tech}' not found in project '{name}'."
+            
+            projects[name_key]["technologies"].remove(tech)
+            self.close_projects(projects, "data/projects.json")
+            return f"Technology '{tech}' removed from '{name_key}'."
 
-        @function_tool
-        def update_next_step(name: str, old_step: str, new_step: str):
-            """
-            Update an existing next step's description.
-            Args:
-                name: The name of the project
-                old_step: The current step text to find
-                new_step: The new step text to replace it with
-            Returns:
-                Confirmation that the next step was updated.
-            """
-            pass
 
 
         @function_tool
@@ -313,7 +489,13 @@ class ProjectAgent():
             Returns:
                 Confirmation that the link was added.
             """
-            pass
+            name_key = name.upper().replace(" ", "_")
+            projects = self.load_projects("data/projects.json")
+            if name_key not in projects:
+                return f"Project '{name}' not found."
+            projects[name_key]["links"][label] = url
+            self.close_projects(projects, "data/projects.json")
+            return f"Link '{label}' added to '{name_key}'."
 
         @function_tool
         def update_link(name: str, label: str, new_url: str):
@@ -326,7 +508,17 @@ class ProjectAgent():
             Returns:
                 Confirmation that the link was updated.
             """
-            pass
+            name_key = name.upper().replace(" ", "_")
+            projects = self.load_projects("data/projects.json")
+            if name_key not in projects:
+                return f"Project '{name}' not found."
+            
+            if label not in projects[name_key]["links"]:
+                return f"Link '{label}' not found in project '{name}'."
+            
+            projects[name_key]["links"][label] = new_url
+            self.close_projects(projects, "data/projects.json")
+            return f"Link '{label}' updated in '{name_key}'."
 
         @function_tool
         def remove_link(name: str, label: str):
@@ -338,7 +530,83 @@ class ProjectAgent():
             Returns:
                 Confirmation that the link was removed.
             """
-            pass
+            name_key = name.upper().replace(" ", "_")
+            projects = self.load_projects("data/projects.json")
+            if name_key not in projects:
+                return f"Project '{name}' not found."
+            
+            if label not in projects[name_key]["links"]:
+                return f"Link '{label}' not found in project '{name}'."
+            
+            del projects[name_key]["links"][label]
+            self.close_projects(projects, "data/projects.json")
+            return f"Link '{label}' removed from '{name_key}'."
+
+
+
+        @function_tool
+        def add_next_step(name: str, step: str):
+            """
+            Add a planned next step for the project.
+            Args:
+                name: The name of the project
+                step: The next step (e.g., "Implement background scheduler")
+            Returns:
+                Confirmation that the next step was added.
+            """
+            name_key = name.upper().replace(" ", "_")
+            projects = self.load_projects("data/projects.json")
+            if name_key not in projects:
+                return f"Project '{name}' not found."
+            projects[name_key]["next_steps"].append(step)
+            self.close_projects(projects, "data/projects.json")
+            return f"Next step added to '{name_key}'."
+
+        @function_tool
+        def remove_next_step(name: str, step: str):
+            """
+            Remove a next step from the project.
+            Args:
+                name: The name of the project
+                step: The step to remove
+            Returns:
+                Confirmation that the next step was removed.
+            """
+            name_key = name.upper().replace(" ", "_")
+            projects = self.load_projects("data/projects.json")
+            if name_key not in projects:
+                return f"Project '{name}' not found."
+            
+            if step not in projects[name_key]["next_steps"]:
+                return f"Next step not found in project '{name}'."
+            
+            projects[name_key]["next_steps"].remove(step)
+            self.close_projects(projects, "data/projects.json")
+            return f"Next step removed from '{name_key}'."
+
+        @function_tool
+        def update_next_step(name: str, old_step: str, new_step: str):
+            """
+            Update an existing next step's description.
+            Args:
+                name: The name of the project
+                old_step: The current step text to find
+                new_step: The new step text to replace it with
+            Returns:
+                Confirmation that the next step was updated.
+            """
+            name_key = name.upper().replace(" ", "_")
+            projects = self.load_projects("data/projects.json")
+            if name_key not in projects:
+                return f"Project '{name}' not found."
+            
+            if old_step not in projects[name_key]["next_steps"]:
+                return f"Next step not found in project '{name}'."
+            
+            idx = projects[name_key]["next_steps"].index(old_step)
+            projects[name_key]["next_steps"][idx] = new_step
+            self.close_projects(projects, "data/projects.json")
+            return f"Next step updated in '{name_key}'."
 
 
         self.agent = Agent(
