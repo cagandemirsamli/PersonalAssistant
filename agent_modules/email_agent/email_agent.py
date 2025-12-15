@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 from agents import Agent, Runner, function_tool, SQLiteSession
 
 # Import our authentication helper
-from gmail_auth import authenticate
+from .gmail_auth import authenticate
 
 load_dotenv()
 
