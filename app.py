@@ -1,8 +1,7 @@
 import streamlit as st
 import asyncio
-from agent_modules.expense_agent import create_expense_agent
-from agent_modules.academic_agent import create_academic_agent
-from agents import Runner, SQLiteSession
+from orchestrator import create_orchestrator
+from agents import SQLiteSession
 
 # Page config
 st.set_page_config(
@@ -43,17 +42,14 @@ st.markdown("""
 
 # Header
 st.markdown('<p class="main-header">🤖 Personal Assistant</p>', unsafe_allow_html=True)
-st.markdown('<p class="sub-header">Expenses, Budgets, Assignments & Exams</p>', unsafe_allow_html=True)
+st.markdown('<p class="sub-header">Expenses • Academics • Projects • Emails</p>', unsafe_allow_html=True)
 
 # Initialize session state
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-if "expense_agent" not in st.session_state:
-    st.session_state.expense_agent = create_expense_agent()
-
-if "academic_agent" not in st.session_state:
-    st.session_state.academic_agent = create_academic_agent()
+if "orchestrator" not in st.session_state:
+    st.session_state.orchestrator = create_orchestrator()
 
 if "session" not in st.session_state:
     st.session_state.session = SQLiteSession("PersonalAssistant")
@@ -61,78 +57,57 @@ if "session" not in st.session_state:
 if "pending_prompt" not in st.session_state:
     st.session_state.pending_prompt = None
 
-if "current_agent" not in st.session_state:
-    st.session_state.current_agent = "expense"
-
 
 async def get_agent_response(user_input: str) -> str:
-    """Run the current agent and get response."""
-    if st.session_state.current_agent == "expense":
-        agent = st.session_state.expense_agent.agent
-    else:
-        agent = st.session_state.academic_agent.agent
-    
-    result = await Runner.run(
-        starting_agent=agent,
-        input=user_input,
-        session=st.session_state.session
+    """Process user input through the orchestrator."""
+    return await st.session_state.orchestrator.process(
+        user_input,
+        st.session_state.session
     )
-    return result.final_output
 
 
 # Sidebar
 with st.sidebar:
-    st.markdown("### 🎯 Select Agent")
-    agent_choice = st.radio(
-        "Choose assistant:",
-        ["💰 Expense Tracker", "📚 Academic Tracker"],
-        index=0 if st.session_state.current_agent == "expense" else 1,
-        label_visibility="collapsed"
-    )
+    st.markdown("### ⚡ Quick Actions")
     
-    # Update current agent based on selection
-    if "Expense" in agent_choice:
-        st.session_state.current_agent = "expense"
-    else:
-        st.session_state.current_agent = "academic"
+    if st.button("💰 Show all expenses", use_container_width=True):
+        st.session_state.pending_prompt = "Show me all my expenses"
+    
+    if st.button("💳 Show all budgets", use_container_width=True):
+        st.session_state.pending_prompt = "Show me all my budgets"
+    
+    if st.button("📝 Show pending assignments", use_container_width=True):
+        st.session_state.pending_prompt = "Show me all my pending assignments"
+    
+    if st.button("📅 Show upcoming exams", use_container_width=True):
+        st.session_state.pending_prompt = "Show me all my upcoming exams"
+    
+    if st.button("📧 Check important emails", use_container_width=True):
+        st.session_state.pending_prompt = "Check my emails for important messages"
+    
+    if st.button("🚀 Show my projects", use_container_width=True):
+        st.session_state.pending_prompt = "Show me all my projects"
     
     st.divider()
     
-    # Quick Actions based on current agent
-    st.markdown("### ⚡ Quick Actions")
+    st.markdown("### 💡 Example Queries")
+    st.markdown("""
+    **Expenses:**
+    - *"Add 150 TL coffee expense"*
+    - *"How much spent on food?"*
     
-    if st.session_state.current_agent == "expense":
-        if st.button("📊 Show all expenses", use_container_width=True):
-            st.session_state.pending_prompt = "Show me all my expenses"
-        
-        if st.button("💳 Show all budgets", use_container_width=True):
-            st.session_state.pending_prompt = "Show me all my budgets"
-        
-        st.divider()
-        st.markdown("### 💡 Examples")
-        st.markdown("""
-        - *"Add 150 TL coffee expense"*
-        - *"Create food budget of 3000 TL"*
-        - *"How much spent on coffee?"*
-        """)
-    else:
-        if st.button("📝 Show pending assignments", use_container_width=True):
-            st.session_state.pending_prompt = "Show me all my pending assignments"
-        
-        if st.button("📅 Show upcoming exams", use_container_width=True):
-            st.session_state.pending_prompt = "Show me all my upcoming exams"
-        
-        if st.button("✅ Show completed work", use_container_width=True):
-            st.session_state.pending_prompt = "Show me all my completed assignments and exams"
-        
-        st.divider()
-        st.markdown("### 💡 Examples")
-        st.markdown("""
-        - *"Add PS4 for COMP305 due Friday"*
-        - *"Add Midterm 2 for CS101 on Dec 5"*
-        - *"Mark PS3 from COMP305 as done"*
-        - *"Enter grade 85 for CS101 Midterm"*
-        """)
+    **Academics:**
+    - *"Add PS4 for COMP305 due Friday"*
+    - *"What exams are coming up?"*
+    
+    **Projects:**
+    - *"Show project Personal Assistant"*
+    - *"Add milestone to project X"*
+    
+    **Emails:**
+    - *"Check my unread emails"*
+    - *"Any important emails?"*
+    """)
     
     st.divider()
     
