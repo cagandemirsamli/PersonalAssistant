@@ -5,7 +5,7 @@ openai-agents
 python-dotenv
 # frontend
 streamlit
-# for the calendar agent
+# for the gmail agent
 google-auth
 google-auth-oauthlib
 google-auth-httplib2
