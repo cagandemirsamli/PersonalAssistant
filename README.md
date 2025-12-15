@@ -2,19 +2,6 @@
 
 A multi-agent AI system that helps you manage expenses, academics, projects, and emails through natural language conversation.
 
-## 📋 Table of Contents
-
-- [Overview](#overview)
-- [Architecture](#architecture)
-- [Features](#features)
-- [Setup](#setup)
-- [Usage](#usage)
-- [Project Structure](#project-structure)
-- [How It Works](#how-it-works)
-- [Agents Explained](#agents-explained)
-
----
-
 ## 🎯 Overview
 
 This Personal Assistant uses multiple specialized AI agents that work together through an intelligent orchestrator. Instead of manually switching between different tools, you simply talk to it naturally, and it automatically routes your requests to the right specialist.
